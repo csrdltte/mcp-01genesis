@@ -36,7 +36,7 @@ import { json } from 'stream/consumers';
 // Carga las variables de entorno del archivo .env
 dotenv.config({path:"/Users/cesar/source/repos/csrdltte/mcp-01genesis/.env"});
 
-// Inicializa el cliente del LLM.
+// Inicializa el cliente del LLM. 
 
 // OpenAI
 /*
