@@ -8,7 +8,7 @@
  */
 
 // server.ts
-// import { TranslatorTool } from './translator.tool'; // Asegúrate de que la ruta sea correcta
+import { TranslatorTool } from './translator.tool'; // Asegúrate de que la ruta sea correcta
 
 /**
  * Simula el manejo de un comando de un jugador en el servidor.

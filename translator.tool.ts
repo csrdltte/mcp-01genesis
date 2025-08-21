@@ -29,7 +29,7 @@
 
 // translator.tool.ts
 //import OpenAI from 'openai';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
 
 // Carga las variables de entorno del archivo .env
@@ -48,8 +48,9 @@ const llmClient = new OpenAI({
 
 // Google GenAI
 // Usa tu API key, idealmente desde variables de entorno para mayor seguridad
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'TU_API_KEY';
-const llmClient = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const GEMINI_API_KEY = process.env.LLM_API_KEY || 'TU_API_KEY';
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
 
 
 export class TranslatorTool {
@@ -62,9 +63,8 @@ export class TranslatorTool {
     console.log(`[TranslatorTool] Iniciando traducción para: "${text}"`);
 
     // --- INICIO DEL PROMPT COMPLEJO ---
-    // Este prompt define el "rol", el "contexto" y las "reglas" para el LLM.
-    // Es la parte más importante para obtener un resultado específico.
-    const systemPrompt = `
+    // Para la API de Gemini, combinamos las instrucciones y el input del usuario en un solo prompt.
+    const fullPrompt = `
       Eres un traductor profesional de español a inglés, especializado en frases con significado poético o literario.
       Tu única función es recibir un texto en español y devolver su traducción más evocadora en inglés.
 
@@ -73,6 +73,8 @@ export class TranslatorTool {
       2.  NO incluyas explicaciones, aclaraciones, saludos o cualquier texto adicional.
       3.  NO uses comillas ni ningún otro formato en tu respuesta.
       4.  Si el texto de entrada es "Luna de verano", tu única respuesta posible es "Summer's Moon".
+
+      Traduce el siguiente texto: "${text}"
     `;
     // --- FIN DEL PROMPT COMPLEJO ---
 
@@ -96,37 +98,15 @@ export class TranslatorTool {
             max_tokens: 60,   // Limitamos la longitud de la respuesta para evitar texto innecesario.
         });
         */
-
-        const response = await llmClient.models.generateContent({
-            model: 'gemini-2.5-flash', // gemini-2.0-pro
-            generationConfig: {
-                temperature: 0.2, // Una temperatura baja hace que la respuesta sea más predecible y se ciña a las reglas.
-                maxOutputTokens: 60 // Limitamos la longitud de la respuesta para evitar texto innecesario.
-            },            
-            contents: [
-                {
-                role: 'user',
-                parts: [
-                    { text: "Describe esta imagen:" }
-                ]
-                },
-                {
-                    role: 'system',
-                    parts: [
-                        { text: systemPrompt } // Este es el texto de sistema.
-                    ]
-                }
-
-            ]
-        });      
-
-      // Extraemos el contenido del mensaje de la respuesta y lo limpiamos.
-      const translation = response.choices[0]?.message?.content?.trim();
+        const llmClient = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const result = await llmClient.generateContent(fullPrompt);
+        const response = result.response;
+        const translation = response.text().trim();
 
       if (!translation) {
         throw new Error('La respuesta del LLM no contenía texto.');
       }
-
+      //console.log(`[TranslatorTool] raw: "${JSON.stringify(response)}"`);
       console.log(`[TranslatorTool] Traducción recibida: "${translation}"`);
       return translation;
 
