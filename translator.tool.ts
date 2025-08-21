@@ -31,9 +31,10 @@
 //import OpenAI from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import dotenv from 'dotenv';
+import { json } from 'stream/consumers';
 
 // Carga las variables de entorno del archivo .env
-dotenv.config();
+dotenv.config({path:"/Users/cesar/source/repos/csrdltte/mcp-01genesis/.env"});
 
 // Inicializa el cliente del LLM.
 
@@ -113,7 +114,8 @@ export class TranslatorTool {
     } catch (error) {
       console.error('[TranslatorTool] Ha ocurrido un error al comunicarse con el LLM:', error);
       // En caso de error, devolvemos un mensaje claro para el juego.
-      return 'Error al traducir';
+      return 'Error al traducir. '+
+        "[TranslatorTool] Ha ocurrido un error al comunicarse con el LLM:" + error.mensaje +" - "+JSON.stringify(error) ;
     }
   }
 }

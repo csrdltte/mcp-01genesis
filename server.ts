@@ -75,7 +75,7 @@ class Mcp01Genesis {
     async run() {
         const transport = new StdioServerTransport();
         await this.server.connect(transport);
-        console.error('ImageN MCP server running on stdio');
+        console.error('01Genesis MCP server running on stdio');
     }
 
 }
