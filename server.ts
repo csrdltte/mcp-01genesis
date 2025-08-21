@@ -1,73 +1,86 @@
-/*
- * =================================================================
- * PASO 3: INTEGRACIÓN EN EL SERVIDOR MCP
- * =================================================================
- *
- * Este es un ejemplo simplificado de cómo usarías tu TranslatorTool
- * en el archivo principal de tu servidor (ej. server.ts).
- */
-
-// server.ts
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { CallToolRequestSchema, ListToolsRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod'
+import { exec, execSync } from 'child_process'
 import { TranslatorTool } from './translator.tool'; // Asegúrate de que la ruta sea correcta
 
-/**
- * Simula el manejo de un comando de un jugador en el servidor.
- * Por ejemplo, cuando un jugador escribe: /translate Luna de verano
- */
-async function handlePlayerCommand(command: string, args: string[]) {
-  if (command.toLowerCase() === '/translate') {
-    if (args.length === 0) {
-      const messageToPlayer = 'Uso: /translate <texto para traducir>';
-      console.log(`(Al jugador) -> ${messageToPlayer}`);
-      return;
+
+class Mcp01Genesis {
+    private server: McpServer;
+
+    constructor() {
+
+        // 1. Crear el servidor MCP
+        // el servidor es la interfaz principal con el protocolo MCP. Maneja la comunicación y la lógica de negocio.
+
+        this.server = new McpServer({
+            name: 'mcp-01genesis',
+            version: '1.0.0',
+            description: 'MCP server for translation',
+        },
+            {
+                capabilities: {
+                    tools: {},
+                },
+            }
+        )
+
+        this.setupToolHandlers();
+        this.server.server.onerror = (error: any) => {
+            console.error('[MCP Server Error]', error);
+            this.server.close();
+        };
+        console.log('MCP server 01genesis initialized and ready to receive requests.');
+        process.on('SIGINT', async () => {
+            await this.server.close();
+            process.exit(0);
+        });
     }
 
-    const textToTranslate = args.join(' ');
-    console.log(`(Del jugador) -> Comando recibido: /translate ${textToTranslate}`);
 
-    // ¡Aquí es donde usamos nuestra herramienta!
-    const translatedText = await TranslatorTool.translate(textToTranslate);
 
-    // El resultado se enviaría de vuelta al chat del jugador.
-    const finalMessage = `Traducción: ${translatedText}`;
-    console.log(`(Al jugador) -> ${finalMessage}`);
-  }
+
+    // 2. Definir herramienta
+    // Las herramientas permiten al LLM realizar acciones específicas. 
+    private setupToolHandlers() {
+        this.server.tool(
+            'translate-to-english',
+            'Translate text to English',
+            {
+                inputText: z.string().describe('Text to translate'),
+            },
+            async ({ inputText }, _extra) => {
+                let responseText: string;
+                if (inputText.length === 0) {
+                    responseText = 'empty text';
+                    console.log(`(Al jugador) -> ${responseText}`);
+                } else {
+                    // ¡Aquí es donde usamos nuestra herramienta!
+                    responseText = await TranslatorTool.translate(inputText);
+                    console.log(`(Al jugador) -> ${responseText}`);
+                }
+                return {
+                    content: [{
+                        type: "text",
+                        text: `${responseText}`
+                    }],
+                };
+            }
+        )
+
+    }
+
+    // 3. Escuchar las conexiones del cliente
+    async run() {
+        const transport = new StdioServerTransport();
+        await this.server.connect(transport);
+        console.error('ImageN MCP server running on stdio');
+    }
+
 }
 
-/**
- * Función principal para simular la ejecución del servidor.
- */
-async function main() {
-  console.log('Servidor MCP escuchando comandos...');
-  console.log('------------------------------------');
 
-  // Simulamos la ejecución del comando del ejemplo
-  await handlePlayerCommand('/translate', ['Luna', 'de', 'verano']);
+const server = new Mcp01Genesis();
+server.run().catch(console.error);
 
-  console.log('------------------------------------');
-  
-  // Simulamos otro ejemplo
-  await handlePlayerCommand('/translate', ['Corazón', 'de', 'león']);
-}
-
-// Ejecutamos la simulación
-main();
-
-/*
- * =================================================================
- * SALIDA ESPERADA EN LA CONSOLA:
- * =================================================================
- *
- * Servidor MCP escuchando comandos...
- * ------------------------------------
- * (Del jugador) -> Comando recibido: /translate Luna de verano
- * [TranslatorTool] Iniciando traducción para: "Luna de verano"
- * [TranslatorTool] Traducción recibida: "Summer's Moon"
- * (Al jugador) -> Traducción: Summer's Moon
- * ------------------------------------
- * (Del jugador) -> Comando recibido: /translate Corazón de león
- * [TranslatorTool] Iniciando traducción para: "Corazón de león"
- * [TranslatorTool] Traducción recibida: "Lionheart"
- * (Al jugador) -> Traducción: Lionheart
- *
- */
